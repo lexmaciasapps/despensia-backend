@@ -1,16 +1,57 @@
-# Compiled class file
-*.class
+# .gitignore for Java/Spring Boot + Docker projects
 
-# Log file
-*.log
+# Maven
+target/
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+release.properties
+dependency-reduced-pom.xml
+buildNumber.properties
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
 
-# BlueJ files
-*.ctxt
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.project
+.classpath
+.factorypath
 
-# Mobile Tools for Java (J2ME)
-.mtj.tmp/
+# Eclipse
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
 
-# Package Files #
+# IntelliJ
+*.iml
+*.ipr
+*.iws
+.out/
+
+# NetBeans
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+
+# VS Code
+.vscode/settings.json
+
+# Spring Boot
+!.mvn/wrapper/maven-wrapper.jar
+
+# Packaging
 *.jar
 *.war
 *.nar
@@ -19,6 +60,26 @@
 *.tar.gz
 *.rar
 
-# virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
-hs_err_pid*
-replay_pid*
+# Log files
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+# Env files
+.env
+.env.*
+!.env.example
+
+# Flyway
+flyway.conf
+
+# Generated sources
+generated/
+
+# Lombok cache
+lombok.config

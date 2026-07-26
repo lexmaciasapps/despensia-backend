@@ -1,0 +1,96 @@
+spring:
+  profiles:
+    active: local
+  application:
+    name: despensia-backend
+
+---
+# Default profile (production-ready defaults)
+spring:
+  config:
+    activate:
+      on-profile: default
+
+  # PostgreSQL (JPA)
+  datasource:
+    url: jdbc:postgresql://localhost:5432/despensia
+    username: despensia
+    password: despensia
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+    show-sql: false
+
+  # MongoDB
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/despensia
+
+  # Redis
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  # Kafka
+  kafka:
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+    consumer:
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+
+  # Flyway
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+    baseline-on-migrate: true
+    validate-on-migrate: true
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-components: always
+      show-details: always
+
+---
+# Local profile (development overrides)
+spring:
+  config:
+    activate:
+      on-profile: local
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+
+  flyway:
+    validate-on-migrate: false
+
+  # DevTools
+  devtools:
+    restart:
+      enabled: true
+    livereload:
+      enabled: true
+
+# Logging
+logging:
+  level:
+    com.despensia: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.flywaydb: INFO

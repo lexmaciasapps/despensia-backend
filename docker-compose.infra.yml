@@ -1,0 +1,86 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: despensia-postgres
+    environment:
+      POSTGRES_DB: despensia
+      POSTGRES_USER: despensia
+      POSTGRES_PASSWORD: despensia
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U despensia"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - despensia-net
+    ports:
+      - "5432:5432"
+
+  mongodb:
+    image: mongo:7
+    container_name: despensia-mongodb
+    environment:
+      MONGO_INITDB_DATABASE: despensia
+    volumes:
+      - mongodb_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - despensia-net
+    ports:
+      - "27017:27017"
+
+  redis:
+    image: redis:7-alpine
+    container_name: despensia-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    networks:
+      - despensia-net
+    ports:
+      - "6379:6379"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.1
+    container_name: despensia-kafka
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    healthcheck:
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    networks:
+      - despensia-net
+    ports:
+      - "9092:9092"
+
+volumes:
+  postgres_data:
+  mongodb_data:
+  redis_data:
+  kafka_data:
+
+networks:
+  despensia-net:
+    driver: bridge

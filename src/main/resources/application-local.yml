@@ -1,0 +1,18 @@
+# Local development overrides — loaded via spring.profiles.active=local
+# All connection details default to localhost; override per environment.
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/despensia
+    username: despensia
+    password: despensia
+
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/despensia
+    redis:
+      host: localhost
+      port: 6379
+
+  kafka:
+    bootstrap-servers: localhost:9092
