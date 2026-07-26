@@ -14,6 +14,35 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      properties:
+        sasl.jaas.config: org.apache.kafka.common.security.plain.PlainLoginModule required username="${KAFKA_USERNAME:kafka}" password="${KAFKA_PASSWORD:kafka123}";
+        sasl.mechanism: PLAIN
+        security.protocol: SASL_PLAINTEXT
+    consumer:
+      properties:
+        sasl.jaas.config: org.apache.kafka.common.security.plain.PlainLoginModule required username="${KAFKA_USERNAME:kafka}" password="${KAFKA_PASSWORD:kafka123}";
+        sasl.mechanism: PLAIN
+        security.protocol: SASL_PLAINTEXT
+
+# LM Studio Configuration
+lm-studio:
+  url: http://localhost:1234
+
+# Security Configuration for Actuator (Management Port)
+# Only exposed on port 9090 to avoid public access on the main app port (8080)
+management:
+  server:
+    port: 9090
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
