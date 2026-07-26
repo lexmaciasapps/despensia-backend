@@ -1,18 +1,19 @@
 # Local development overrides — loaded via spring.profiles.active=local
 # All connection details default to localhost; override per environment.
+# Secrets are loaded via .env (see spring.config.import in application.yml)
 
 spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/despensia
-    username: despensia
-    password: despensia
+    username: ${DB_USERNAME:despensia}
+    password: ${DB_PASSWORD:despensia}
 
   data:
     mongodb:
-      uri: mongodb://localhost:27017/despensia
+      uri: ${MONGO_URI:mongodb://localhost:27017/despensia}
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}

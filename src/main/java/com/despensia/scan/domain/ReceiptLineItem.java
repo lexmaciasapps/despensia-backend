@@ -1,21 +1,22 @@
-package com.despensia.inventory.domain;
+package com.despensia.scan.domain;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "inventory_item")
-public class InventoryItem {
+@Table(name = "receipt_line_item")
+public class ReceiptLineItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
-    @Column(name = "product_id", nullable = false)
+    @Column(name = "product_id")
     private String productId;
 
     @Column(name = "name", nullable = false)
@@ -24,11 +25,12 @@ public class InventoryItem {
     @Column(name = "quantity", nullable = false)
     private Integer quantity;
 
-    @Column(name = "unit", nullable = false)
-    private String unit;
+    @Column(name = "price", precision = 10, scale = 2, nullable = false)
+    private BigDecimal price;
 
-    @Column(name = "location")
-    private String location;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "receipt_id", nullable = false)
+    private Receipt receipt;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -38,13 +40,13 @@ public class InventoryItem {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    public InventoryItem() {}
+    public ReceiptLineItem() {}
 
-    public InventoryItem(String productId, String name, Integer quantity, String unit) {
+    public ReceiptLineItem(String productId, String name, Integer quantity, BigDecimal price) {
         this.productId = productId;
         this.name = name;
         this.quantity = quantity;
-        this.unit = unit;
+        this.price = price;
     }
 
     // Getters and Setters
@@ -60,11 +62,11 @@ public class InventoryItem {
     public Integer getQuantity() { return quantity; }
     public void setQuantity(Integer quantity) { this.quantity = quantity; }
 
-    public String getUnit() { return unit; }
-    public void setUnit(String unit) { this.unit = unit; }
+    public BigDecimal getPrice() { return price; }
+    public void setPrice(BigDecimal price) { this.price = price; }
 
-    public String getLocation() { return location; }
-    public void setLocation(String location) { this.location = location; }
+    public Receipt getReceipt() { return receipt; }
+    public void setReceipt(Receipt receipt) { this.receipt = receipt; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

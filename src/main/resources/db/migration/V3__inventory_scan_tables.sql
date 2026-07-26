@@ -1,20 +1,13 @@
--- V3: InventoryScan and ScanItem tables
+-- V3: InventoryScan table — replaces legacy scan_result reference
 -- Flyway migration for scan module domain.
+-- Aligns with InventoryScan entity (scan_type enum: PRODUCT/RECEIPT).
 
 CREATE TABLE IF NOT EXISTS inventory_scan (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    inventory_item_id UUID NOT NULL REFERENCES inventory_item(id) ON DELETE CASCADE,
-    scan_result_id UUID REFERENCES scan_result(id),
-    scanned_by UUID REFERENCES "user"(id),
-    scan_type VARCHAR(50) NOT NULL DEFAULT 'MANUAL',
-    scanned_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);
-
-CREATE TABLE IF NOT EXISTS scan_item (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    scan_result_id UUID NOT NULL REFERENCES scan_result(id) ON DELETE CASCADE,
-    product_id UUID REFERENCES product_item(id),
-    detected_quantity INTEGER,
-    confidence_score FLOAT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    scan_type VARCHAR(50) NOT NULL DEFAULT 'PRODUCT',
+    image_path TEXT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+    error_message TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

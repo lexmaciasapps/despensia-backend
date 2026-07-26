@@ -1,11 +1,6 @@
 package com.despensia.product.domain;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -16,9 +11,6 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "product_item")
-@Getter
-@Setter
-@NoArgsConstructor
 public class ProductItem {
 
     @Id
@@ -45,6 +37,10 @@ public class ProductItem {
     @Column(name = "is_expired")
     private Boolean isExpired;
 
+    // Nullable reference to the receipt from which this product was extracted (OCR receipt parsing)
+    @Column(name = "receipt_id")
+    private String receiptId;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -52,6 +48,8 @@ public class ProductItem {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    public ProductItem() {}
 
     public ProductItem(String name, ProductType productType) {
         this.name = name;
@@ -78,6 +76,37 @@ public class ProductItem {
             this.isExpired = expirationDate.isBefore(LocalDate.now());
         }
     }
+
+    // Getters and Setters
+    public UUID getId() { return id; }
+    public void setId(UUID id) { this.id = id; }
+
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
+
+    public ProductType getProductType() { return productType; }
+    public void setProductType(ProductType productType) { this.productType = productType; }
+
+    public Integer getEstimatedDaysRemaining() { return estimatedDaysRemaining; }
+    public void setEstimatedDaysRemaining(Integer estimatedDaysRemaining) { this.estimatedDaysRemaining = estimatedDaysRemaining; }
+
+    public LocalDate getExpirationDate() { return expirationDate; }
+    public void setExpirationDate(LocalDate expirationDate) { this.expirationDate = expirationDate; }
+
+    public ExpirationSource getExpirationSource() { return expirationSource; }
+    public void setExpirationSource(ExpirationSource expirationSource) { this.expirationSource = expirationSource; }
+
+    public Boolean getIsExpired() { return isExpired; }
+    public void setIsExpired(Boolean isExpired) { this.isExpired = isExpired; }
+
+    public String getReceiptId() { return receiptId; }
+    public void setReceiptId(String receiptId) { this.receiptId = receiptId; }
+
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
     public enum ProductType {
         PACKAGED, ORGANIC

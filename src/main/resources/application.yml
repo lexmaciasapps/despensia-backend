@@ -1,4 +1,6 @@
 spring:
+  config:
+    import: optional:file:.env.properties
   profiles:
     active: local
   application:
@@ -14,8 +16,8 @@ spring:
   # PostgreSQL (JPA)
   datasource:
     url: jdbc:postgresql://localhost:5432/despensia
-    username: despensia
-    password: despensia
+    username: ${DB_USERNAME:despensia}
+    password: ${DB_PASSWORD:despensia}
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -30,17 +32,17 @@ spring:
   # MongoDB
   data:
     mongodb:
-      uri: mongodb://localhost:27017/despensia
+      uri: ${MONGO_URI:mongodb://localhost:27017/despensia}
 
   # Redis
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
   # Kafka
   kafka:
-    bootstrap-servers: localhost:9092
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
