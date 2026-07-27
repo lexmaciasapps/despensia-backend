@@ -15,4 +15,8 @@ public record ScanResult(
     public static ScanResult failure(String message) {
         return new ScanResult(false, null, message);
     }
+
+    public static ScanResult pending(Object scanId) {
+        return new ScanResult(true, scanId, "PENDING");
+    }
 }

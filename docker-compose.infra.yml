@@ -79,7 +79,8 @@ services:
       KAFKA_SASL_ENABLED_MECHANISMS: PLAIN
       KAFKA_SASL_MECHANISM: PLAIN
       KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
-      # Users (format: "username:password")
+      # Kafka topics are auto-created by Spring NewTopic beans (scan-events, scan-events-dlt)
+      # No manual topic creation needed — just ensure the app starts after Kafka is healthy
       KAFKA_USERS: "${KAFKA_USERNAME}:${KAFKA_PASSWORD}"
     volumes:
       - kafka_data:/var/lib/kafka/data
