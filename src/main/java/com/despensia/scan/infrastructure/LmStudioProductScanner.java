@@ -6,20 +6,18 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.model.Media;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
 
 import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.Base64;
-import java.util.List;
 import java.util.Map;
 
 /**
- * Implementation of ProductScanningPort using LM Studio (OpenAI-compatible API).
+ * Implementation of ProductScanningPort using Spring AI (OpenAI-compatible API via LM Studio).
  */
 @SuppressWarnings("unchecked")
 @Component
@@ -28,22 +26,20 @@ public class LmStudioProductScanner implements ProductScanningPort {
     private static final Logger log = LoggerFactory.getLogger(LmStudioProductScanner.class);
     private static final ObjectMapper mapper = new ObjectMapper();
 
-    private final WebClient webClient;
-    private final String lmStudioUrl;
+    private final ChatClient chatClient;
 
-    public LmStudioProductScanner(
-            WebClient.Builder webClientBuilder,
-            @Value("${lm-studio.url:http://localhost:1234}") String lmStudioUrl) {
-        this.webClient = webClientBuilder.build();
-        this.lmStudioUrl = lmStudioUrl;
+    public LmStudioProductScanner(ChatClient.Builder chatClientBuilder) {
+        // Spring AI auto-configures OpenAI-compatible client from application.yml:
+        // spring.ai.openai.base-url -> http://localhost:1234/v1/ (LM Studio endpoint)
+        this.chatClient = chatClientBuilder.build();
     }
 
     @Override
     public ProductItem scan(com.despensia.scan.domain.InventoryScan scan) {
-        log.info("Scanning product via LM Studio for image: {}", scan.getImagePath());
+        log.info("Scanning product via Spring AI for image: {}", scan.getImagePath());
 
         try {
-            String base64Image = encodeImageToBase64(scan.getImagePath());
+            byte[] imageData = Files.readAllBytes(java.nio.file.Path.of(scan.getImagePath()));
 
             String prompt = """
                 Analyze this image and identify the product.
@@ -60,58 +56,32 @@ public class LmStudioProductScanner implements ProductScanningPort {
                 }
                 """;
 
-            var response = webClient.post()
-                    .uri(lmStudioUrl + "/v1/chat/completions")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(Map.of(
-                            "model", "llama-3.2-vision",
-                            "messages", List.of(
-                                    Map.of("role", "user", "content", List.of(
-                                            Map.of("type", "text", "text", prompt),
-                                            Map.of("type", "image_url", "image_url", Map.of("url", "data:image/jpeg;base64," + base64Image))
-                                    ))
-                            ),
-                            "max_tokens", 300
-                    ))
-                    .retrieve()
-                    .bodyToMono(Map.class)
-                    .block();
+            String response = chatClient.prompt()
+                    .system(s -> s.text("You are a product identification assistant. Always respond with valid JSON."))
+                    .user(u -> u.text(prompt)
+                            .media(org.springframework.util.MimeTypeUtils.IMAGE_JPEG, new ByteArrayResource(imageData)))
+                    .call()
+                    .content();
 
-            if (response != null && response.containsKey("choices")) {
-                List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
-                if (!choices.isEmpty()) {
-                    Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
-                    String content = (String) message.get("content");
-                    log.info("LM Studio response: {}", content);
-                    return parseProductResponse(content);
-                }
-            }
+            log.info("Spring AI response: {}", response);
+            return parseProductResponse(response);
+        } catch (IOException e) {
+            log.error("Error reading image file for Spring AI scan: {}", e.getMessage());
+            throw new RuntimeException("Failed to read image", e);
         } catch (Exception e) {
-            log.error("Error scanning product via LM Studio: {}", e.getMessage());
-            throw new RuntimeException("Failed to scan product", e);
+            log.error("Error scanning product via Spring AI: {}", e.getMessage());
+            throw new RuntimeException("Failed to scan product with Spring AI", e);
         }
-
-        throw new RuntimeException("No product detected or error occurred");
-    }
-
-    private String encodeImageToBase64(String imagePath) throws IOException {
-        Path path = Path.of(imagePath);
-        if (!Files.exists(path)) {
-            throw new IOException("Image file not found: " + imagePath);
-        }
-        byte[] bytes = Files.readAllBytes(path);
-        return Base64.getEncoder().encodeToString(bytes);
     }
 
     /**
      * Parse the JSON response from LM Studio into a ProductItem.
-     * Validates required fields and applies sensible defaults for missing ones.
      */
     ProductItem parseProductResponse(String content) {
         String json = extractJson(content);
 
         if (json == null || !json.contains("\"name\"") && !json.contains("'name'")) {
-            log.error("LM Studio response does not contain a 'name' field: {}", content);
+            log.error("Spring AI response does not contain a 'name' field: {}", content);
             throw new IllegalArgumentException("Invalid product detection result from AI: missing required field 'name'");
         }
 
@@ -119,20 +89,20 @@ public class LmStudioProductScanner implements ProductScanningPort {
         try {
             node = mapper.readTree(json);
         } catch (Exception e) {
-            log.error("Failed to parse LM Studio JSON response for product: {}", content, e);
+            log.error("Failed to parse Spring AI JSON response for product: {}", content, e);
             throw new IllegalArgumentException("Invalid product detection result from AI: malformed JSON", e);
         }
 
         String name = node.path("name").asText("");
         if (name.isBlank()) {
-            log.warn("LM Studio returned empty 'name', using default");
+            log.warn("Spring AI returned empty 'name', using default");
             name = "Producto Desconocido";
         }
 
         String typeStr = node.path("type").asText("").trim();
-        com.despensia.product.domain.ProductItem.ProductType productType;
+        ProductItem.ProductType productType;
         if (typeStr.isEmpty()) {
-            log.warn("LM Studio response missing 'type' field, defaulting to PACKAGED");
+            log.warn("Spring AI response missing 'type' field, defaulting to PACKAGED");
             productType = ProductItem.ProductType.PACKAGED;
         } else {
             try {

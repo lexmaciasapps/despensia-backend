@@ -79,6 +79,21 @@ spring:
     livereload:
       enabled: true
 
+---
+# Spring AI — OpenAI-compatible endpoint (LM Studio)
+spring:
+  config:
+    activate:
+      on-profile: default
+  
+  ai:
+    openai:
+      api-key: sk-random-non-required-for-lm-studio
+      base-url: http://localhost:1234/v1/
+      chat:
+        options:
+          model: llama-3.2-vision
+
 # Logging
 logging:
   level:

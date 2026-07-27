@@ -6,25 +6,22 @@ import com.despensia.scan.domain.Receipt;
 import com.despensia.scan.service.ReceiptParserPort;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.Iterator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
+import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.core.io.ByteArrayResource;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
 
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.Base64;
-import java.util.List;
+import java.util.Iterator;
 import java.util.Map;
 
 /**
- * Implementation of ReceiptParserPort using LM Studio (OpenAI-compatible API).
+ * Implementation of ReceiptParserPort using Spring AI (OpenAI-compatible API via LM Studio).
  */
 @SuppressWarnings("unchecked")
 @Component
@@ -33,22 +30,20 @@ public class LmStudioReceiptParser implements ReceiptParserPort {
     private static final Logger log = LoggerFactory.getLogger(LmStudioReceiptParser.class);
     private static final ObjectMapper mapper = new ObjectMapper();
 
-    private final WebClient webClient;
-    private final String lmStudioUrl;
+    private final ChatClient chatClient;
 
-    public LmStudioReceiptParser(
-            WebClient.Builder webClientBuilder,
-            @Value("${lm-studio.url:http://localhost:1234}") String lmStudioUrl) {
-        this.webClient = webClientBuilder.build();
-        this.lmStudioUrl = lmStudioUrl;
+    public LmStudioReceiptParser(ChatClient.Builder chatClientBuilder) {
+        // Spring AI auto-configures OpenAI-compatible client from application.yml:
+        // spring.ai.openai.base-url -> http://localhost:1234/v1/ (LM Studio endpoint)
+        this.chatClient = chatClientBuilder.build();
     }
 
     @Override
     public Receipt parse(InventoryScan scan) {
-        log.info("Parsing receipt via LM Studio for image: {}", scan.getImagePath());
+        log.info("Parsing receipt via Spring AI for image: {}", scan.getImagePath());
 
         try {
-            String base64Image = encodeImageToBase64(scan.getImagePath());
+            byte[] imageData = Files.readAllBytes(java.nio.file.Path.of(scan.getImagePath()));
 
             String prompt = """
                 Analyze this receipt image and extract the purchase data.
@@ -73,59 +68,33 @@ public class LmStudioReceiptParser implements ReceiptParserPort {
                 }
                 """;
 
-            var response = webClient.post()
-                    .uri(lmStudioUrl + "/v1/chat/completions")
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .bodyValue(Map.of(
-                            "model", "llama-3.2-vision",
-                            "messages", List.of(
-                                    Map.of("role", "user", "content", List.of(
-                                            Map.of("type", "text", "text", prompt),
-                                            Map.of("type", "image_url", "image_url", Map.of("url", "data:image/jpeg;base64," + base64Image))
-                                    ))
-                            ),
-                            "max_tokens", 500
-                    ))
-                    .retrieve()
-                    .bodyToMono(Map.class)
-                    .block();
+            String response = chatClient.prompt()
+                    .system(s -> s.text("You are a receipt parsing assistant. Always respond with valid JSON."))
+                    .user(u -> u.text(prompt)
+                            .media(org.springframework.util.MimeTypeUtils.IMAGE_JPEG, new ByteArrayResource(imageData)))
+                    .call()
+                    .content();
 
-            if (response != null && response.containsKey("choices")) {
-                List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
-                if (!choices.isEmpty()) {
-                    Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
-                    String content = (String) message.get("content");
-                    log.info("LM Studio response: {}", content);
-                    return parseReceiptResponse(content);
-                }
-            }
+            log.info("Spring AI response: {}", response);
+            return parseReceiptResponse(response);
+        } catch (IOException e) {
+            log.error("Error reading image file for Spring AI receipt parsing: {}", e.getMessage());
+            throw new RuntimeException("Failed to read image", e);
         } catch (Exception e) {
-            log.error("Error parsing receipt via LM Studio: {}", e.getMessage());
-            throw new RuntimeException("Failed to parse receipt", e);
+            log.error("Error parsing receipt via Spring AI: {}", e.getMessage());
+            throw new RuntimeException("Failed to parse receipt with Spring AI", e);
         }
-
-        throw new RuntimeException("No receipt detected or error occurred");
-    }
-
-    private String encodeImageToBase64(String imagePath) throws IOException {
-        Path path = Path.of(imagePath);
-        if (!Files.exists(path)) {
-            throw new IOException("Image file not found: " + imagePath);
-        }
-        byte[] bytes = Files.readAllBytes(path);
-        return Base64.getEncoder().encodeToString(bytes);
     }
 
     /**
      * Parse the JSON response from LM Studio into a Receipt with line items.
-     * Validates required fields and applies sensible defaults for missing ones.
      */
     @SuppressWarnings("unchecked")
     Receipt parseReceiptResponse(String content) {
         String json = extractJson(content);
 
         if (json == null || !json.contains("\"storeName\"")) {
-            log.error("LM Studio response does not contain a 'storeName' field: {}", content);
+            log.error("Spring AI response does not contain a 'storeName' field: {}", content);
             throw new IllegalArgumentException("Invalid receipt parsing result from AI: missing required field 'storeName'");
         }
 
@@ -133,13 +102,13 @@ public class LmStudioReceiptParser implements ReceiptParserPort {
         try {
             node = mapper.readTree(json);
         } catch (Exception e) {
-            log.error("Failed to parse LM Studio JSON response for receipt: {}", content, e);
+            log.error("Failed to parse Spring AI JSON response for receipt: {}", content, e);
             throw new IllegalArgumentException("Invalid receipt parsing result from AI: malformed JSON", e);
         }
 
         String storeName = node.path("storeName").asText("").trim();
         if (storeName.isBlank()) {
-            log.warn("LM Studio returned empty 'storeName', using default");
+            log.warn("Spring AI returned empty 'storeName', using default");
             storeName = "Tienda Desconocida";
         }
 

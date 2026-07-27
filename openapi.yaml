@@ -1,0 +1,349 @@
+openapi: 3.0.3
+info:
+  title: Despensia Backend API
+  description: REST API for inventory management — products, scans, and user authentication (JWT deferred).
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+tags:
+  - name: Users
+    description: User registration and login endpoints
+  - name: Products
+    description: Product catalog operations
+  - name: Inventory
+    description: Inventory management (items, quantities)
+  - name: Scan
+    description: Image-based product scanning via AI
+
+paths:
+  /api/auth/register:
+    post:
+      tags: [Users]
+      summary: Register a new user
+      operationId: registerUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '400':
+          description: Bad request (e.g., email already exists)
+
+  /api/auth/login:
+    post:
+      tags: [Users]
+      summary: Authenticate a user
+      operationId: loginUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Authentication successful — returns userId, name (token deferred)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthResponse'
+        '401':
+          description: Invalid credentials
+
+  /api/products:
+    get:
+      tags: [Products]
+      summary: List all products (paginated)
+      operationId: listProducts
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: sort
+          in: query
+          schema: { type: string, example: createdAt }
+      responses:
+        '200':
+          description: Paginated product list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductPage'
+
+    post:
+      tags: [Products]
+      summary: Create a new product entry
+      operationId: createProduct
+      parameters:
+        - name: name
+          in: query
+          required: true
+          schema: { type: string }
+        - name: productType
+          in: query
+          required: true
+          schema:
+            $ref: '#/components/schemas/ProductType'
+      responses:
+        '200':
+          description: Product created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductItem'
+
+  /api/products/{id}:
+    get:
+      tags: [Products]
+      summary: Get product by ID
+      operationId: getProductById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Product details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductItem'
+        '400':
+          description: Invalid UUID format
+        '404':
+          description: Not found
+
+  /api/inventory/items:
+    get:
+      tags: [Inventory]
+      summary: List all inventory items (paginated)
+      operationId: listInventoryItems
+      parameters:
+        - name: page
+          in: query
+          schema: { type: integer, default: 0 }
+        - name: size
+          in: query
+          schema: { type: integer, default: 20 }
+        - name: sort
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Paginated inventory list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItemPage'
+
+    post:
+      tags: [Inventory]
+      summary: Add an item to inventory
+      operationId: addInventoryItem
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddItemRequest'
+      responses:
+        '201':
+          description: Inventory item created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem'
+        '400':
+          description: Bad request (e.g., product not found)
+
+  /api/inventory/items/{id}:
+    get:
+      tags: [Inventory]
+      summary: Get an inventory item by ID
+      operationId: getInventoryItemById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        '200':
+          description: Inventory item details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem'
+        '404':
+          description: Not found
+
+  /api/inventory/items/{id}/quantity:
+    put:
+      tags: [Inventory]
+      summary: Update item quantity
+      operationId: updateQuantity
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateQuantityRequest'
+      responses:
+        '200':
+          description: Quantity updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InventoryItem'
+        '400':
+          description: Bad request
+
+  /api/scan/products:
+    post:
+      tags: [Scan]
+      summary: Submit a product image for AI scanning
+      operationId: submitProductScan
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:
+                  type: string
+                  format: binary
+                scanType:
+                  type: string
+                  default: PRODUCT
+                  enum: [PRODUCT, RECEIPT]
+      responses:
+        '202':
+          description: Scan accepted — processing asynchronously
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScanResult'
+
+components:
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string, minLength: 8 }
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email }
+        password: { type: string }
+
+    AuthResponse:
+      type: object
+      properties:
+        userId: { type: string, format: uuid }
+        name: { type: string }
+        token: { type: string, nullable: true }
+
+    ProductItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        productType: { $ref: '#/components/schemas/ProductType' }
+        estimatedDaysRemaining: { type: integer }
+        expirationDate: { type: string, format: date, nullable: true }
+        expirationSource: { $ref: '#/components/schemas/ExpirationSource', nullable: true }
+        isExpired: { type: boolean, nullable: true }
+        createdAt: { type: string, format: date-time }
+
+    ProductPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductItem'
+        totalPages: { type: integer }
+        totalElements: { type: integer }
+        size: { type: integer }
+        number: { type: integer }
+
+    ProductType:
+      type: string
+      enum: [PACKAGED, ORGANIC]
+
+    ExpirationSource:
+      type: string
+      enum: [MANUAL, AI_ESTIMATE, CONSERVATIVE_AVERAGE]
+
+    InventoryItem:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        productId: { type: string, format: uuid, nullable: true }
+        name: { type: string }
+        quantity: { type: integer }
+        unit: { type: string }
+        location: { type: string }
+        createdAt: { type: string, format: date-time, nullable: true }
+        updatedAt: { type: string, format: date-time, nullable: true }
+
+    InventoryItemPage:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/InventoryItem'
+        totalPages: { type: integer }
+        totalElements: { type: integer }
+        size: { type: integer }
+        number: { type: integer }
+
+    AddItemRequest:
+      type: object
+      required: [productId, name, quantity, unit]
+      properties:
+        productId: { type: string, format: uuid }
+        name: { type: string }
+        quantity: { type: integer }
+        unit: { type: string }
+
+    UpdateQuantityRequest:
+      type: object
+      required: [quantity]
+      properties:
+        quantity: { type: integer }
+
+    ScanResult:
+      type: object
+      properties:
+        scanId: { type: string, format: uuid }
+        status: { $ref: '#/components/schemas/ScanStatus' }
+        message: { type: string, nullable: true }
+
+    ScanStatus:
+      type: string
+      enum: [PENDING, PROCESSING, COMPLETED, FAILED]

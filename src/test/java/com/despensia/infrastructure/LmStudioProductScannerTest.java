@@ -1,14 +1,43 @@
 package com.despensia.infrastructure;
 
+import com.despensia.product.domain.ProductItem;
 import com.despensia.scan.infrastructure.LmStudioProductScanner;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.springframework.ai.chat.client.ChatClient;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+
+import java.lang.reflect.InvocationTargetException;
 
 import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
+/**
+ * Tests for LmStudioProductScanner — covers JSON parsing validation logic.
+ */
 class LmStudioProductScannerTest {
 
+    private ProductItem callParse(String content) throws Exception {
+        var fakeClient = Mockito.mock(ChatClient.class);
+        
+        // Create scanner and inject the mock ChatClient via reflection (constructor needs a real Builder)
+        var builderMock = Mockito.mock(ChatClient.Builder.class);
+        when(builderMock.build()).thenReturn(fakeClient);
+        
+        var scanner = new LmStudioProductScanner(builderMock);
+
+        Method method = scanner.getClass().getDeclaredMethod("parseProductResponse", String.class);
+        method.setAccessible(true); // allow access to package-private method from different package
+        return (ProductItem) method.invoke(scanner, content);
+    }
+
+    // ── parseProductResponse tests ────────────────────────
+
     @Test
-    void testParseProductResponse_withValidJson() throws Exception {
+    void testParseValidJson() throws Exception {
         String content = """
             Here is the product data:
             ```json
@@ -21,32 +50,31 @@ class LmStudioProductScannerTest {
             End of analysis.
             """;
 
-        String json = extractJson(content);
+        var result = callParse(content);
 
-        assertThat(json).contains("Leche Entera");
-        assertThat(json).contains("PACKAGED");
+        assertThat(result.getName()).isEqualTo("Leche Entera");
     }
 
     @Test
-    void testParseProductResponse_withMarkdownCodeBlock() throws Exception {
-        String content = "```\\n{\\n  \"name\": \"Yogurt Natural\",\\n  \"type\": \"ORGANIC\"\\n}\\n```";
+    void testParseMarkdownCodeBlock() throws Exception {
+        String content = "```\n{\n  \"name\": \"Yogurt Natural\",\n  \"type\": \"ORGANIC\"\n}\n```";
 
-        String json = extractJson(content);
+        var result = callParse(content);
 
-        assertThat(json).contains("Yogurt Natural");
+        assertThat(result.getName()).isEqualTo("Yogurt Natural");
     }
 
     @Test
-    void testParseProductResponse_withPlainJsonObject() throws Exception {
+    void testParsePlainJsonObject() throws Exception {
         String content = "{\"name\":\"Aceite de Oliva\",\"type\":\"PACKAGED\"}";
 
-        String json = extractJson(content);
+        var result = callParse(content);
 
-        assertThat(json).isEqualTo("{\"name\":\"Aceite de Oliva\",\"type\":\"PACKAGED\"}");
+        assertThat(result.getName()).isEqualTo("Aceite de Oliva");
     }
 
     @Test
-    void testParseProductResponse_withMissingTypeDefaultsToPackaged() throws Exception {
+    void testMissingTypeDefaultsToPackaged() throws Exception {
         String content = """
             ```json
             {
@@ -56,13 +84,13 @@ class LmStudioProductScannerTest {
             ```
             """;
 
-        String json = extractJson(content);
+        var result = callParse(content);
 
-        assertThat(json).contains("Pan Integral");
+        assertThat(result.getName()).isEqualTo("Pan Integral");
     }
 
     @Test
-    void testParseProductResponse_withMissingNameDefaultsToUnknown() throws Exception {
+    void testMissingNameThrows() throws Exception {
         String content = """
             ```json
             {
@@ -72,51 +100,51 @@ class LmStudioProductScannerTest {
             ```
             """;
 
-        String json = extractJson(content);
-
-        assertThat(json).contains("ORGANIC");
+        try {
+            callParse(content);
+            fail("Expected IllegalArgumentException");
+        } catch (InvocationTargetException e) {
+            assertThat(e.getCause()).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("missing required field 'name'");
+        }
     }
 
     @Test
-    void testExtractJson_withNoBraces_returnsOriginalContent() throws Exception {
+    void testNoBracesThrowsBecauseMissingName() throws Exception {
         String content = "This is just text with no JSON at all";
 
-        String result = extractJson(content);
-
-        assertThat(result).isEqualTo(content);
+        try {
+            callParse(content);
+            fail("Expected IllegalArgumentException");
+        } catch (InvocationTargetException e) {
+            assertThat(e.getCause()).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("missing required field 'name'");
+        }
     }
 
     @Test
-    void testExtractJson_withMultipleObjects_takesOutermostRange() throws Exception {
+    void testMultipleObjectsThrows() throws Exception {
         String content = "Some text before {\"a\":1} middle stuff {\"b\":2, \"c\":3} more text";
 
-        String result = extractJson(content);
-
-        assertThat(result).contains("\"b\":2");
+        try {
+            callParse(content);
+            fail("Expected IllegalArgumentException");
+        } catch (InvocationTargetException e) {
+            assertThat(e.getCause()).isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("missing required field");
+        }
     }
 
     @Test
-    void testExtractJson_withNestedBraces_handlesCorrectly() throws Exception {
+    void testNestedBracesHandlesCorrectly() throws Exception {
         String content = """
             ```json
             {"name": "Test", "nested": {"key": "value"}}
             ```
             """;
 
-        String result = extractJson(content);
+        var result = callParse(content);
 
-        assertThat(result).contains("Test");
-    }
-
-    private static String extractJson(String content) {
-        if (!content.contains("{")) {
-            return content;
-        }
-        int start = content.indexOf('{');
-        int end = content.lastIndexOf('}') + 1;
-        if (start >= 0 && end > start) {
-            return content.substring(start, end);
-        }
-        return content;
+        assertThat(result.getName()).isEqualTo("Test");
     }
 }
