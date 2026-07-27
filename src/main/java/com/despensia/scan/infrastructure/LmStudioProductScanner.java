@@ -1,6 +1,9 @@
 package com.despensia.scan.infrastructure;
 
+import com.despensia.product.domain.ProductItem;
 import com.despensia.scan.service.ProductScanningPort;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,17 +15,18 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Base64;
-import java.util.Map;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Implementation of ProductScanningPort using LM Studio (OpenAI-compatible API).
- * Uses Virtual Threads for non-blocking I/O.
  */
+@SuppressWarnings("unchecked")
 @Component
 public class LmStudioProductScanner implements ProductScanningPort {
 
     private static final Logger log = LoggerFactory.getLogger(LmStudioProductScanner.class);
+    private static final ObjectMapper mapper = new ObjectMapper();
 
     private final WebClient webClient;
     private final String lmStudioUrl;
@@ -35,20 +39,19 @@ public class LmStudioProductScanner implements ProductScanningPort {
     }
 
     @Override
-    public com.despensia.product.domain.ProductItem scan(com.despensia.scan.domain.InventoryScan scan) {
+    public ProductItem scan(com.despensia.scan.domain.InventoryScan scan) {
         log.info("Scanning product via LM Studio for image: {}", scan.getImagePath());
 
         try {
             String base64Image = encodeImageToBase64(scan.getImagePath());
-            
-            // Prompt for product detection
+
             String prompt = """
                 Analyze this image and identify the product.
                 Return a JSON object with the following fields:
                 - name: String (product name)
                 - type: String (PACKAGED or ORGANIC)
                 - estimatedDaysRemaining: Integer (estimated days until expiration)
-                
+
                 Example:
                 {
                   "name": "Leche Entera",
@@ -61,7 +64,7 @@ public class LmStudioProductScanner implements ProductScanningPort {
                     .uri(lmStudioUrl + "/v1/chat/completions")
                     .contentType(MediaType.APPLICATION_JSON)
                     .bodyValue(Map.of(
-                            "model", "llama-3.2-vision", // Or your preferred model
+                            "model", "llama-3.2-vision",
                             "messages", List.of(
                                     Map.of("role", "user", "content", List.of(
                                             Map.of("type", "text", "text", prompt),
@@ -72,7 +75,7 @@ public class LmStudioProductScanner implements ProductScanningPort {
                     ))
                     .retrieve()
                     .bodyToMono(Map.class)
-                    .block(); // Blocking in this context is acceptable as we are in a use-case orchestrator
+                    .block();
 
             if (response != null && response.containsKey("choices")) {
                 List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
@@ -100,11 +103,65 @@ public class LmStudioProductScanner implements ProductScanningPort {
         return Base64.getEncoder().encodeToString(bytes);
     }
 
-    private com.despensia.product.domain.ProductItem parseProductResponse(String content) {
-        // Simple JSON parsing (in production, use Jackson/Gson)
-        // For now, return a dummy product as the stub was doing, but with logging
-        log.info("Parsing product response: {}", content);
-        // TODO: Implement JSON parsing logic
-        return new com.despensia.product.domain.ProductItem("Producto Detectado", com.despensia.product.domain.ProductItem.ProductType.PACKAGED);
+    /**
+     * Parse the JSON response from LM Studio into a ProductItem.
+     * Validates required fields and applies sensible defaults for missing ones.
+     */
+    ProductItem parseProductResponse(String content) {
+        String json = extractJson(content);
+
+        if (json == null || !json.contains("\"name\"") && !json.contains("'name'")) {
+            log.error("LM Studio response does not contain a 'name' field: {}", content);
+            throw new IllegalArgumentException("Invalid product detection result from AI: missing required field 'name'");
+        }
+
+        JsonNode node;
+        try {
+            node = mapper.readTree(json);
+        } catch (Exception e) {
+            log.error("Failed to parse LM Studio JSON response for product: {}", content, e);
+            throw new IllegalArgumentException("Invalid product detection result from AI: malformed JSON", e);
+        }
+
+        String name = node.path("name").asText("");
+        if (name.isBlank()) {
+            log.warn("LM Studio returned empty 'name', using default");
+            name = "Producto Desconocido";
+        }
+
+        String typeStr = node.path("type").asText("").trim();
+        com.despensia.product.domain.ProductItem.ProductType productType;
+        if (typeStr.isEmpty()) {
+            log.warn("LM Studio response missing 'type' field, defaulting to PACKAGED");
+            productType = ProductItem.ProductType.PACKAGED;
+        } else {
+            try {
+                productType = ProductItem.ProductType.valueOf(typeStr.toUpperCase());
+            } catch (IllegalArgumentException e) {
+                log.warn("Unknown product type '{}', defaulting to PACKAGED", typeStr);
+                productType = ProductItem.ProductType.PACKAGED;
+            }
+        }
+
+        int daysRemaining = node.path("estimatedDaysRemaining").isInt()
+                ? node.path("estimatedDaysRemaining").intValue() : 30;
+
+        var product = new ProductItem(name, productType);
+        if (daysRemaining > 0) {
+            product.updateEstimatedDays(daysRemaining);
+        }
+        return product;
+    }
+
+    private String extractJson(String content) {
+        if (!content.contains("{")) {
+            return content;
+        }
+        int start = content.indexOf('{');
+        int end = content.lastIndexOf('}') + 1;
+        if (start >= 0 && end > start) {
+            return content.substring(start, end);
+        }
+        return content;
     }
 }

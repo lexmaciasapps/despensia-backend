@@ -16,7 +16,17 @@ public record ScanResult(
         return new ScanResult(false, null, message);
     }
 
+    /**
+     * Pending scan result — the operation was accepted and is being processed.
+     * errorMessage is intentionally null to preserve semantic clarity:
+     *   - success=true + data!=null = pending (scan submitted successfully)
+     *   - success=false + errorMessage!=null = failed
+     */
+    /**
+     * Create a pending result — the scan was submitted successfully and is being processed asynchronously.
+     * Callers distinguish pending by checking success=true + data != null (not errorMessage).
+     */
     public static ScanResult pending(Object scanId) {
-        return new ScanResult(true, scanId, "PENDING");
+        return new ScanResult(true, scanId, null);
     }
 }
