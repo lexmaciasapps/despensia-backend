@@ -101,3 +101,7 @@ target/test-classes/testcontainers.properties
 kafka-secrets/
 .mvn/jvm.config
 /src/test/resources/testcontainers.properties
+
+# Agent skills (OpenCode)
+.agents/skills/
+.skills-lock.json
