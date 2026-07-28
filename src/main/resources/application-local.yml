@@ -18,20 +18,25 @@ spring:
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
-    producer:
-      properties:
-        sasl.jaas.config: org.apache.kafka.common.security.plain.PlainLoginModule required username="${KAFKA_USERNAME:kafka}" password="${KAFKA_PASSWORD:kafka123}";
-        sasl.mechanism: PLAIN
-        security.protocol: SASL_PLAINTEXT
-    consumer:
-      properties:
-        sasl.jaas.config: org.apache.kafka.common.security.plain.PlainLoginModule required username="${KAFKA_USERNAME:kafka}" password="${KAFKA_PASSWORD:kafka123}";
-        sasl.mechanism: PLAIN
-        security.protocol: SASL_PLAINTEXT
+    # TODO(jwt-security): Re-enable SASL authentication when JWT security layer is implemented.
+    # Current config (disabled for local development — Kafka container runs without auth):
+    # producer:
+    #   properties:
+    #     sasl.jaas.config: org.apache.kafka.common.security.plain.PlainLoginModule required username="${KAFKA_USERNAME:kafka}" password="${KAFKA_PASSWORD:kafka123}";
+    #     sasl.mechanism: PLAIN
+    #     security.protocol: SASL_PLAINTEXT
+    # consumer:
+    #   properties:
+    #     sasl.jaas.config: org.apache.kafka.common.security.plain.PlainLoginModule required username="${KAFKA_USERNAME:kafka}" password="${KAFKA_PASSWORD:kafka123}";
+    #     sasl.mechanism: PLAIN
+    #     security.protocol: SASL_PLAINTEXT
 
 # LM Studio Configuration
 lm-studio:
   url: http://localhost:1234
+
+# Spring AI — LM Studio (local vision model for product scanning)
+spring.ai.openai.api-key: sk-local-lm-studio-not-required
 
 # Security Configuration for Actuator (Management Port)
 # Only exposed on port 9090 to avoid public access on the main app port (8080)
