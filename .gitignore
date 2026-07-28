@@ -100,3 +100,4 @@ target/test-classes/testcontainers.properties
 # Kafka secrets (local dev only)
 kafka-secrets/
 .mvn/jvm.config
+/src/test/resources/testcontainers.properties
