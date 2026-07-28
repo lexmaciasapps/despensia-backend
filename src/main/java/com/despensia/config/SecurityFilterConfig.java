@@ -21,7 +21,8 @@ public class SecurityFilterConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers("/api/public/**").permitAll() // For future public endpoints
-                .anyRequest().authenticated()
+                .requestMatchers("/api/auth/**").permitAll()    // Auth endpoints — no JWT yet (deferred)
+                .anyRequest().permitAll()                      // TODO: Re-enable auth gate before prod
             );
         return http.build();
     }
