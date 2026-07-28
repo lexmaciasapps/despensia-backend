@@ -28,6 +28,9 @@ public class InventoryController {
     @Operation(summary = "Add an item to inventory", description = "Creates a new inventory entry linked to a product.")
     public ResponseEntity<Map<String, Object>> addItem(@RequestBody AddItemRequest request) {
         try {
+            if (request.name() == null || request.name().isBlank()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "name is required"));
+            }
             InventoryItem item = inventoryService.add(
                 request.productId(),
                 request.name(),
@@ -71,15 +74,23 @@ public class InventoryController {
     public record UpdateQuantityRequest(Integer quantity) {}
 
     private Map<String, Object> toMap(InventoryItem item) {
-        return Map.of(
-            "id", item.getId().toString(),
-            "productId", item.getProductId(),
-            "name", item.getName(),
-            "quantity", item.getQuantity(),
-            "unit", item.getUnit(),
-            "location", item.getLocation(),
-            "createdAt", item.getCreatedAt() != null ? item.getCreatedAt().toString() : null,
-            "updatedAt", item.getUpdatedAt() != null ? item.getUpdatedAt().toString() : null
-        );
+        var map = new java.util.LinkedHashMap<String, Object>();
+        map.put("id", item.getId().toString());
+        map.put("productId", item.getProductId() != null ? item.getProductId() : "");
+        map.put("name", item.getName() != null ? item.getName() : "");
+        map.put("quantity", item.getQuantity());
+        map.put("unit", item.getUnit() != null ? item.getUnit() : "");
+        map.put("location", item.getLocation());
+        if (item.getCreatedAt() != null) {
+            map.put("createdAt", item.getCreatedAt().toString());
+        } else {
+            map.put("createdAt", null);
+        }
+        if (item.getUpdatedAt() != null) {
+            map.put("updatedAt", item.getUpdatedAt().toString());
+        } else {
+            map.put("updatedAt", null);
+        }
+        return map;
     }
 }

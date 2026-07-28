@@ -80,13 +80,12 @@ public class ProcessImageUseCase {
         InventoryScan scan = new InventoryScan(scanType, imagePath);
         try {
             return switch (scanType) {
-                case RECEIPT -> processReceipt(scan);
-                case PRODUCT -> processProduct(scan);
+                case RECEIPT -> processReceiptWithStatusTracking(scan);
+                case PRODUCT -> processProductWithStatusTracking(scan);
             };
         } catch (Exception e) {
-            scan.setStatus(InventoryScan.ScanStatus.FAILED);
-            scan.setErrorMessage(e.getMessage());
             log.error("Synchronous scan failed: {}", e.getMessage());
+            markFailed(scan, "Error procesando imagen: " + e.getMessage());
             return ScanResult.failure("Error procesando imagen: " + e.getMessage());
         }
     }
@@ -95,6 +94,34 @@ public class ProcessImageUseCase {
 
     private void saveWithStatus(InventoryScan scan, InventoryScan.ScanStatus status) {
         scan.setStatus(status);
+        scanRepository.save(scan);
+    }
+
+    /**
+     * Process a receipt image with proper status tracking.
+     */
+    private ScanResult processReceiptWithStatusTracking(InventoryScan scan) throws Exception {
+        saveWithStatus(scan, InventoryScan.ScanStatus.PROCESSING);
+        Receipt receipt = receiptParserPort.parse(scan);
+        saveWithStatus(scan, InventoryScan.ScanStatus.COMPLETED);
+        log.info("Receipt scan completed: store={}, total={}", receipt.getStoreName(), receipt.getTotalAmount());
+        return ScanResult.success(receipt);
+    }
+
+    /**
+     * Process a product image with proper status tracking.
+     */
+    private ScanResult processProductWithStatusTracking(InventoryScan scan) throws Exception {
+        saveWithStatus(scan, InventoryScan.ScanStatus.PROCESSING);
+        ProductItem product = productScanningPort.scan(scan);
+        saveWithStatus(scan, InventoryScan.ScanStatus.COMPLETED);
+        log.info("Product scan completed: name={}, type={}", product.getName(), product.getProductType());
+        return ScanResult.success(product);
+    }
+
+    private void markFailed(InventoryScan scan, String errorMessage) {
+        saveWithStatus(scan, InventoryScan.ScanStatus.FAILED);
+        scan.setErrorMessage(errorMessage);
         scanRepository.save(scan);
     }
 

@@ -21,6 +21,8 @@
         <java.version>21</java.version>
         <flyway.version>9.22.3</flyway.version>
         <testcontainers.version>1.20.4</testcontainers.version>
+        <!-- Override docker-java to fix API version negotiation with Docker 29.x -->
+        <docker-java.version>3.4.1</docker-java.version>
     </properties>
 
     <dependencies>
@@ -128,6 +130,14 @@
             <groupId>org.testcontainers</groupId>
             <artifactId>postgresql</artifactId>
             <version>${testcontainers.version}</version>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Force docker-java transport to use HTTP (fixes API version negotiation with Docker 29.x) -->
+        <dependency>
+            <groupId>com.github.docker-java</groupId>
+            <artifactId>docker-java-transport-httpclient5</artifactId>
+            <version>${docker-java.version}</version>
             <scope>test</scope>
         </dependency>
 

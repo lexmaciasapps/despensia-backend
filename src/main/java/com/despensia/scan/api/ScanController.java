@@ -12,6 +12,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.IOException;
 import java.util.Map;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/scan")
@@ -39,19 +40,40 @@ public class ScanController {
             return ResponseEntity.badRequest().body(Map.of("error", "Image file is required"));
         }
 
+        String originalFilename = image.getOriginalFilename();
+        // Validate extension
+        if (originalFilename != null && !isAllowedExtension(originalFilename)) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Unsupported file type. Allowed: jpg, jpeg, png"));
+        }
+
+        // Validate MIME type
+        String contentType = image.getContentType();
+        if (!isValidImageMimeType(contentType)) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Invalid image content type. Expected: image/jpeg or image/png"));
+        }
+
+        // Validate size (10 MB max)
+        long maxSize = 10 * 1024 * 1024; // 10MB
+        if (image.getSize() > maxSize) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", "Image too large. Maximum size: 10 MB"));
+        }
+
         try {
-            // Save the uploaded file temporarily and get its path
             String imagePath = saveUploadedFile(image);
 
-            Object result = scanService.submitScan(scanType, imagePath);
+            com.despensia.scan.service.ScanSubmissionResult result = scanService.submitScan(scanType, imagePath);
 
-            if (result instanceof Map<?, ?> response) {
-                return ResponseEntity.status(HttpStatus.ACCEPTED).body(response);
+            if (result.isPending()) {
+                return ResponseEntity.status(HttpStatus.ACCEPTED)
+                        .body(Map.of("scanId", result.scanId(), "status", result.status()));
             }
 
-            log.warn("Unexpected result type from submitScan: {}", result.getClass().getName());
+            log.warn("Unexpected result from submitScan: status={} scanId={}", result.status(), result.scanId());
             return ResponseEntity.status(HttpStatus.ACCEPTED)
-                    .body(Map.of("status", "PROCESSING", "message", "Scan accepted"));
+                    .body(Map.of("status", "PROCESSING"));
 
         } catch (RuntimeException e) {
             log.error("Error processing scan request: {}", e.getMessage());
@@ -66,12 +88,25 @@ public class ScanController {
             if (!tempDir.exists()) {
                 tempDir.mkdirs();
             }
-            String fileName = System.currentTimeMillis() + "_" + file.getOriginalFilename();
+            // Sanitize filename to prevent path traversal attacks
+            String originalName = file.getOriginalFilename() != null ? file.getOriginalFilename().replace("/", "_") : "image";
+            String fileName = System.currentTimeMillis() + "_" + originalName;
             java.io.File tempFile = new File(tempDir, fileName);
             file.transferTo(tempFile);
             return tempFile.getAbsolutePath();
         } catch (IOException e) {
             throw new RuntimeException("Failed to save uploaded image: " + e.getMessage(), e);
         }
+    }
+
+    private boolean isAllowedExtension(String filename) {
+        if (filename == null || !filename.contains(".")) return false;
+        String ext = filename.substring(filename.lastIndexOf('.') + 1).toLowerCase();
+        return Set.of("jpg", "jpeg", "png").contains(ext);
+    }
+
+    private boolean isValidImageMimeType(String contentType) {
+        if (contentType == null) return false;
+        return contentType.equals("image/jpeg") || contentType.equals("image/png");
     }
 }

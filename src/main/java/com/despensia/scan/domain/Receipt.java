@@ -7,6 +7,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -25,6 +27,9 @@ public class Receipt {
 
     @Column(name = "total_amount", precision = 10, scale = 2)
     private BigDecimal totalAmount;
+
+    @OneToMany(mappedBy = "receipt", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<ReceiptLineItem> lineItems = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "scan_id")
@@ -58,6 +63,12 @@ public class Receipt {
 
     public BigDecimal getTotalAmount() { return totalAmount; }
     public void setTotalAmount(BigDecimal totalAmount) { this.totalAmount = totalAmount; }
+
+    public List<ReceiptLineItem> getLineItems() { return lineItems; }
+    public void addLineItem(ReceiptLineItem item) { 
+        this.lineItems.add(item);
+        item.setReceipt(this);
+    }
 
     public InventoryScan getInventoryScan() { return inventoryScan; }
     public void setInventoryScan(InventoryScan inventoryScan) { this.inventoryScan = inventoryScan; }

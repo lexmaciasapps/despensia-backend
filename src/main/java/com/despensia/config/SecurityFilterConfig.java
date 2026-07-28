@@ -25,4 +25,17 @@ public class SecurityFilterConfig {
             );
         return http.build();
     }
+
+    /**
+     * TODO: [Security] Implement JWT authentication when moving to production.
+     * Current state: Spring Security's auth gate is a placeholder — any request passes as "anonymous".
+     * The login endpoint returns token=null (see UsersController.login()).
+     * 
+     * Required before prod:
+     * 1. Add spring-boot-starter-oauth2-resource-server or jjwt library
+     * 2. Create JwtAuthenticationFilter that intercepts /api/* requests and validates Bearer tokens
+     * 3. Update SecurityFilterChain to permit all "/api/auth/**" (register/login) but require JWT for the rest
+     * 4. Add token expiration, refresh token rotation, and key management
+     * 5. Implement rate limiting on login/register endpoints (e.g., Bucket4j or Resilience4j)
+     */
 }

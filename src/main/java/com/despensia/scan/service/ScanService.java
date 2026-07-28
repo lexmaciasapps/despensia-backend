@@ -17,9 +17,9 @@ public class ScanService {
     }
 
     /**
-     * Submit an image for async scanning. Returns a response map with scanId and status.
+     * Submit an image for async scanning. Returns a typed scan submission result.
      */
-    public Object submitScan(InventoryScan.ScanType scanType, String imagePath) {
+    public ScanSubmissionResult submitScan(InventoryScan.ScanType scanType, String imagePath) {
         log.info("Submitting {} scan for image: {}", scanType, imagePath);
 
         Object result = processImageUseCase.process(scanType, imagePath);
@@ -27,16 +27,16 @@ public class ScanService {
         if (result instanceof ScanResult sr && Boolean.TRUE.equals(sr.success())) {
             // For pending results, extract the scanId and return as a response DTO
             log.info("Scan submitted successfully with ID: {}", sr.data());
-            return java.util.Map.of(
-                    "scanId", sr.data(),
-                    "status", "PROCESSING"
-            );
+            String scanId = sr.data() != null ? sr.data().toString() : "unknown";
+            return ScanSubmissionResult.pending(scanId);
         }
 
         if (result instanceof ScanResult sr && Boolean.FALSE.equals(sr.success())) {
             throw new RuntimeException("Scan submission failed: " + sr.errorMessage());
         }
 
-        return result;
+        // Fallback — should not happen in normal flow
+        log.warn("Unexpected result type from submitScan: {}", result != null ? result.getClass().getName() : "null");
+        return ScanSubmissionResult.pending(null);
     }
 }

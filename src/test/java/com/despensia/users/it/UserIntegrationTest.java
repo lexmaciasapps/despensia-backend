@@ -156,7 +156,7 @@ class UserIntegrationTest extends com.despensia.DespensiaBackendApplicationTests
 
     @Test
     void login_returnsUserIdAndName() throws Exception {
-        String email = "namedata@test.com";
+        String email = "integration.integration@test.com";
         
         mockMvc.perform(post("/api/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -179,7 +179,7 @@ class UserIntegrationTest extends com.despensia.DespensiaBackendApplicationTests
         var json = mapper.readTree(result.getResponse().getContentAsString());
         
         assertThat(json.get("userId")).isNotNull();
-        assertThat(json.get("name")).isEqualTo("integration integration");
+        assertThat(json.get("name").asText()).isEqualTo("integration integration");
     }
 
 }

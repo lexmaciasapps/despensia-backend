@@ -54,7 +54,8 @@ class ProductIntegrationTest extends com.despensia.DespensiaBackendApplicationTe
 
     @Test
     void getProductById_notFound_returns404() throws Exception {
-        mockMvc.perform(get("/api/products/{id}", "nonexistent-id"))
+        // Use a valid UUID that doesn't exist in the DB (not an invalid format string)
+        mockMvc.perform(get("/api/products/{id}", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"))
             .andExpect(status().isNotFound());
     }
 }

@@ -29,7 +29,7 @@ public class ProductService {
 
     public ProductItem findBy(UUID id) {
         return productItemRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Product not found: " + id));
+            .orElseThrow(() -> new IllegalArgumentException("Product not found: " + id));
     }
 
     public Page<ProductItem> list(Pageable pageable) {

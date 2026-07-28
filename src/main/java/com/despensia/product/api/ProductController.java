@@ -44,26 +44,47 @@ public class ProductController {
 
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getById(@PathVariable String id) {
+        // Validate UUID format first — before calling the service layer
+        java.util.UUID uuid;
         try {
-            ProductItem product = productService.findBy(java.util.UUID.fromString(id));
-            return ResponseEntity.ok(toMap(product));
+            uuid = java.util.UUID.fromString(id);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", "Invalid UUID format"));
-        } catch (RuntimeException e) {
+        }
+
+        ProductItem product;
+        try {
+            product = productService.findBy(uuid);
+        } catch (IllegalArgumentException e) {
+            // Service layer uses IllegalArgumentException for not-found — map to 404
             return ResponseEntity.notFound().build();
         }
+        
+        return ResponseEntity.ok(toMap(product));
     }
 
     private Map<String, Object> toMap(ProductItem product) {
-        return Map.of(
-                "id", product.getId().toString(),
-                "name", product.getName(),
-                "productType", product.getProductType(),
-                "estimatedDaysRemaining", product.getEstimatedDaysRemaining(),
-                "expirationDate", product.getExpirationDate() != null ? product.getExpirationDate().toString() : null,
-                "expirationSource", product.getExpirationSource() != null ? product.getExpirationSource().name() : null,
-                "isExpired", product.getIsExpired() != null ? product.getIsExpired() : false,
-                "createdAt", product.getCreatedAt() != null ? product.getCreatedAt().toString() : null
-        );
+        var map = new java.util.LinkedHashMap<String, Object>();
+        map.put("id", product.getId().toString());
+        map.put("name", product.getName() != null ? product.getName() : "");
+        map.put("productType", product.getProductType());
+        map.put("estimatedDaysRemaining", product.getEstimatedDaysRemaining());
+        if (product.getExpirationDate() != null) {
+            map.put("expirationDate", product.getExpirationDate().toString());
+        } else {
+            map.put("expirationDate", null);
+        }
+        if (product.getExpirationSource() != null) {
+            map.put("expirationSource", product.getExpirationSource().name());
+        } else {
+            map.put("expirationSource", null);
+        }
+        map.put("isExpired", product.getIsExpired() != null ? product.getIsExpired() : false);
+        if (product.getCreatedAt() != null) {
+            map.put("createdAt", product.getCreatedAt().toString());
+        } else {
+            map.put("createdAt", null);
+        }
+        return map;
     }
 }

@@ -1,3 +1,29 @@
 # This profile is loaded by @ActiveProfiles("test") in DespensiaBackendApplicationTests.
 # The actual datasource URL/username/password are overridden via static block using Testcontainers PostgreSQL container.
 lm-studio.url: http://localhost:1234
+
+spring.data.mongodb.uri: mongodb://localhost:27017/despensia_test
+spring.redis.host: localhost
+spring.redis.port: 6379
+
+# Required by SecurityConfig @Value annotations (defaults to avoid early injection failure)
+spring.datasource.username: despensia
+spring.datasource.password: despensia
+
+# Spring AI — disable OpenAI auto-config for tests (LM Studio not available in CI/test env)
+spring.ai.openai.api-key: sk-test-for-unit-tests-only
+
+# Disable Flyway for tests — use Hibernate DDL auto instead to create tables in ephemeral container
+spring.flyway.enabled: false
+spring.jpa.hibernate.ddl-auto: update
+spring.jpa.show-sql: true
+
+
+# Security — enable BCrypt encoder as default PasswordEncoder bean
+spring.security.user.name: test
+spring.security.user.password: testpass
+
+
+
+# Force Docker host for Testcontainers (bypasses API version detection)
+spring.docker.compose.skip.in-tests: true

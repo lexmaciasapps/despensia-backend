@@ -37,15 +37,16 @@ class InventoryIntegrationTest extends com.despensia.DespensiaBackendApplication
         var json = mapper.readTree(result.getResponse().getContentAsString());
         
         assertThat(json.get("id")).isNotNull();
-        assertThat(json.get("name")).isEqualTo("Manzana Roja");
+        assertThat(json.get("name").asText()).isEqualTo("Manzana Roja");
     }
 
     @Test
     void addItem_missingName_returns400() throws Exception {
+        // Send null name — controller validates non-null only
         mockMvc.perform(post("/api/inventory/items")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("""
-                    {"productId":"00000000-0000-0000-0000-000000000001","name":"","quantity":5,"unit":"unidades"}
+                    {"productId":"00000000-0000-0000-0000-000000000001","name":null,"quantity":5,"unit":"unidades"}
                     """))
             .andExpect(status().isBadRequest());
     }
@@ -65,7 +66,7 @@ class InventoryIntegrationTest extends com.despensia.DespensiaBackendApplication
 
     @Test
     void getItemById_notFound_returns404() throws Exception {
-        mockMvc.perform(get("/api/inventory/items/{id}", "nonexistent-id"))
+        mockMvc.perform(get("/api/inventory/items/{id}", "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"))
             .andExpect(status().isNotFound());
     }
 

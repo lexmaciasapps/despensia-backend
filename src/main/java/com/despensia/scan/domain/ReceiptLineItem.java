@@ -29,6 +29,10 @@ public class ReceiptLineItem {
     private BigDecimal price;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "inventory_scan_id")
+    private InventoryScan inventoryScan;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "receipt_id", nullable = false)
     private Receipt receipt;
 

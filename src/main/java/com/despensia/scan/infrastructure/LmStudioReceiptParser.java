@@ -164,6 +164,7 @@ public class LmStudioReceiptParser implements ReceiptParserPort {
 
                 int qty = (int) Math.round(quantityVal);
                 var lineItem = new com.despensia.scan.domain.ReceiptLineItem(null, itemName, qty, BigDecimal.valueOf(priceVal));
+                receipt.addLineItem(lineItem); // attach to receipt so JPA cascade persists it
             }
         }
 
