@@ -42,6 +42,9 @@ public class ProductController {
         return productService.list(pageable);
     }
 
+    /**
+     * Get a product by its ID. Validates UUID format and returns 404 if not found.
+     */
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> getById(@PathVariable String id) {
         // Validate UUID format first — before calling the service layer
@@ -63,6 +66,9 @@ public class ProductController {
         return ResponseEntity.ok(toMap(product));
     }
 
+    /**
+     * Convert a {@link ProductItem} to a Map representation for JSON serialization.
+     */
     private Map<String, Object> toMap(ProductItem product) {
         var map = new java.util.LinkedHashMap<String, Object>();
         map.put("id", product.getId().toString());

@@ -45,6 +45,9 @@ public class KafkaConfig {
      * JSON-capable producer factory for ScanEvent serialization.
      * Uses JsonSerializer so the event record is emitted as structured JSON rather than toString().
      */
+    /**
+     * JSON-capable producer factory for {@link ScanEvent} serialization.
+     */
     @Bean("scanProducerFactory")
     public ProducerFactory<String, ScanEvent> scanProducerFactory() {
         java.util.Map<String, Object> props = new java.util.HashMap<>();

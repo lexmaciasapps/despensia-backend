@@ -5,6 +5,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+/**
+ * Service that orchestrates image scan submissions.
+ */
 @Service
 public class ScanService {
 
@@ -12,6 +15,9 @@ public class ScanService {
 
     private final ProcessImageUseCase processImageUseCase;
 
+    /**
+     * Constructor injection for {@link ProcessImageUseCase}.
+     */
     public ScanService(ProcessImageUseCase processImageUseCase) {
         this.processImageUseCase = processImageUseCase;
     }
@@ -36,7 +42,8 @@ public class ScanService {
         }
 
         // Fallback — should not happen in normal flow
-        log.warn("Unexpected result type from submitScan: {}", result != null ? result.getClass().getName() : "null");
+        log.warn("Unexpected result type from submitScan: {}", 
+                result != null ? result.getClass().getName() : "null");
         return ScanSubmissionResult.pending(null);
     }
 }

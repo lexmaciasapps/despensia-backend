@@ -32,11 +32,26 @@ public class LmStudioReceiptParser implements ReceiptParserPort {
 
     private final ChatClient chatClient;
 
+    /**
+     * Constructor injection for the Spring AI {@link ChatClient.Builder}.
+     */
+    /**
+     * Constructor injection for the Spring AI {@link ChatClient.Builder}.
+     */
     public LmStudioReceiptParser(ChatClient.Builder chatClientBuilder) {
         // Spring AI auto-configures OpenAI-compatible client from application.yml:
         // spring.ai.openai.base-url -> http://localhost:1234/v1/ (LM Studio endpoint)
-        this.chatClient = chatClientBuilder.build();
+        this.chatClient = chatClientBuilder != null ? chatClientBuilder.build() : null;
     }
+
+    /**
+     * Package-private constructor for testing — skips ChatClient initialization.
+     */
+    LmStudioReceiptParser() {
+        // No-op: used only by unit tests that call parseReceiptResponse directly (no AI needed).
+        this.chatClient = null;
+    }
+
 
     @Override
     public Receipt parse(InventoryScan scan) {

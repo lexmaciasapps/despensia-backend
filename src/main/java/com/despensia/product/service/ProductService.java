@@ -12,6 +12,9 @@ import org.springframework.stereotype.Service;
 
 import java.util.UUID;
 
+/**
+ * Service for managing {@link ProductItem} CRUD operations with automatic expiration strategies.
+ */
 @Service
 @RequiredArgsConstructor
 public class ProductService {
@@ -20,6 +23,9 @@ public class ProductService {
     private final ConservativeAverageStrategy conservativeStrategy;
     private final AiVisualEstimateStrategy aiStrategy;
 
+    /**
+     * Create a new product entry with an appropriate default expiration strategy based on its type.
+     */
     public ProductItem create(String name, ProductItem.ProductType productType) {
         ProductItem product = new ProductItem(name, productType);
         DefaultExpirationStrategy strategy = resolveStrategy(productType);
@@ -27,6 +33,9 @@ public class ProductService {
         return productItemRepository.save(product);
     }
 
+    /**
+     * Find a product by its ID. Throws {@link IllegalArgumentException} if not found.
+     */
     public ProductItem findBy(UUID id) {
         return productItemRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Product not found: " + id));

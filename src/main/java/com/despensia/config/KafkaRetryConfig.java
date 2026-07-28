@@ -46,6 +46,9 @@ public class KafkaRetryConfig {
         return factory;
     }
 
+    /**
+     * Extract a scan ID from a Kafka ConsumerRecord key, handling non-UUID keys gracefully.
+     */
     private static String extractScanId(ConsumerRecord<?, ?> record) {
         if (record == null || record.key() == null) return "unknown";
         try {

@@ -73,6 +73,9 @@ public class InventoryController {
     public record AddItemRequest(String productId, String name, Integer quantity, String unit) {}
     public record UpdateQuantityRequest(Integer quantity) {}
 
+    /**
+     * Convert an {@link InventoryItem} to a Map representation for JSON serialization.
+     */
     private Map<String, Object> toMap(InventoryItem item) {
         var map = new java.util.LinkedHashMap<String, Object>();
         map.put("id", item.getId().toString());

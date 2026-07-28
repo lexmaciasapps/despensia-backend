@@ -88,8 +88,8 @@ public class ScanController {
             if (!tempDir.exists()) {
                 tempDir.mkdirs();
             }
-            // Sanitize filename to prevent path traversal attacks
-            String originalName = file.getOriginalFilename() != null ? file.getOriginalFilename().replace("/", "_") : "image";
+            // Sanitize filename to prevent path traversal attacks: extract basename only, replace all non-alphanumeric chars with _
+            String originalName = file.getOriginalFilename() != null ? sanitizeFileName(file.getOriginalFilename()) : "image";
             String fileName = System.currentTimeMillis() + "_" + originalName;
             java.io.File tempFile = new File(tempDir, fileName);
             file.transferTo(tempFile);
@@ -97,6 +97,18 @@ public class ScanController {
         } catch (IOException e) {
             throw new RuntimeException("Failed to save uploaded image: " + e.getMessage(), e);
         }
+    }
+
+    /**
+     * Sanitize a filename by stripping all path components and replacing unsafe characters.
+     */
+    private String sanitizeFileName(String originalName) {
+        // Extract basename only (handles both / and \ path separators)
+        int lastSlash = Math.max(originalName.lastIndexOf('/'), originalName.lastIndexOf('\\'));
+        String safeName = lastSlash >= 0 ? originalName.substring(lastSlash + 1) : originalName;
+
+        // Replace all non-alphanumeric characters with underscore to prevent injection attacks
+        return safeName.replaceAll("[^a-zA-Z0-9._-]", "_");
     }
 
     private boolean isAllowedExtension(String filename) {

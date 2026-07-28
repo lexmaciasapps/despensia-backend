@@ -115,12 +115,25 @@ public class ScanImageConsumer {
             // Transition PENDING → PROCESSING
             existing.setStatus(InventoryScan.ScanStatus.PROCESSING);
             scanRepository.save(existing);
+            return existing;
         } else if (existing != null && existing.getStatus() == InventoryScan.ScanStatus.PROCESSING) {
             // Already in the right state — nothing to do
+            return existing;
+        } else if (existing != null) {
+            // Unexpected state — transition to PROCESSING anyway
+            log.warn("Unexpected scan status {} for {}; transitioning to PROCESSING", existing.getStatus(), event.scanId());
+            existing.setStatus(InventoryScan.ScanStatus.PROCESSING);
+            scanRepository.save(existing);
+            return existing;
         } else {
-            // No record found or unexpected state — create a new one for the use case to work with
-            log.warn("No PROCESSING/PENDING scan found for {}; creating temporary record", event.scanId());
+            // No record found — create a new one with the correct ID from Kafka event
+            log.warn("No scan record found for {}; creating new record", event.scanId());
+            InventoryScan newScan = new InventoryScan(event.scanType(), event.imagePath());
+            newScan.setId(event.scanId());
+            newScan.setStatus(InventoryScan.ScanStatus.PROCESSING);
+            scanRepository.save(newScan);
+            return newScan;
         }
-        return existing;
     }
+
 }

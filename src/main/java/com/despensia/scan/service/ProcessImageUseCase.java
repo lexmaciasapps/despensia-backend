@@ -149,25 +149,4 @@ public class ProcessImageUseCase {
         }
     }
 
-    private ScanResult processReceipt(InventoryScan scan) {
-        log.info("Processing RECEIPT scan for image: {}", scan.getImagePath());
-        saveWithStatus(scan, InventoryScan.ScanStatus.PROCESSING);
-
-        Receipt receipt = receiptParserPort.parse(scan);
-
-        saveWithStatus(scan, InventoryScan.ScanStatus.COMPLETED);
-        log.info("Receipt scan completed: store={}, total={}", receipt.getStoreName(), receipt.getTotalAmount());
-        return ScanResult.success(receipt);
-    }
-
-    private ScanResult processProduct(InventoryScan scan) {
-        log.info("Processing PRODUCT scan for image: {}", scan.getImagePath());
-        saveWithStatus(scan, InventoryScan.ScanStatus.PROCESSING);
-
-        ProductItem product = productScanningPort.scan(scan);
-
-        saveWithStatus(scan, InventoryScan.ScanStatus.COMPLETED);
-        log.info("Product scan completed: name={}, type={}", product.getName(), product.getProductType());
-        return ScanResult.success(product);
-    }
 }
