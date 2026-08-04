@@ -2,9 +2,12 @@ package com.despensia.config;
 
 import com.despensia.scan.domain.event.ScanEvent;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringSerializer;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.kafka.core.DefaultKafkaProducerFactory;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.core.ProducerFactory;
@@ -42,17 +45,18 @@ public class KafkaConfig {
     }
 
     /**
-     * JSON-capable producer factory for ScanEvent serialization.
-     * Uses JsonSerializer so the event record is emitted as structured JSON rather than toString().
-     */
-    /**
      * JSON-capable producer factory for {@link ScanEvent} serialization.
+     * Inherits bootstrap servers from Spring Boot auto-config via application.yml properties.
      */
     @Bean("scanProducerFactory")
-    public ProducerFactory<String, ScanEvent> scanProducerFactory() {
+    public ProducerFactory<String, ScanEvent> scanProducerFactory(
+            Environment env) {
+        String bootstrapServers = env.getProperty("spring.kafka.bootstrap-servers", "localhost:9092");
+
         java.util.Map<String, Object> props = new java.util.HashMap<>();
-        props.put(org.apache.kafka.clients.producer.ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
-        props.put(org.apache.kafka.clients.producer.ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class.getName());
+        props.put(ProducerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
+        props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class.getName());
+        props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, JsonSerializer.class.getName());
 
         return new DefaultKafkaProducerFactory<>(props);
     }
