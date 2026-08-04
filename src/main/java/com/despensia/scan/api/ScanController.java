@@ -1,6 +1,8 @@
 package com.despensia.scan.api;
 
+import com.despensia.scan.api.dto.ScanStatusResponse;
 import com.despensia.scan.domain.InventoryScan;
+import com.despensia.scan.repository.ScanRepository;
 import com.despensia.scan.service.ScanService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +15,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/scan")
@@ -21,14 +24,41 @@ public class ScanController {
     private static final Logger log = LoggerFactory.getLogger(ScanController.class);
 
     private final ScanService scanService;
+    private final ScanRepository scanRepository;
 
-    public ScanController(ScanService scanService) {
+    public ScanController(ScanService scanService, ScanRepository scanRepository) {
         this.scanService = scanService;
+        this.scanRepository = scanRepository;
     }
 
     @GetMapping("/health")
     public Map<String, String> health() {
         return Map.of("status", "ok", "module", "scan");
+    }
+
+    /**
+     * Retrieve the current status of a scan by its ID.
+     *
+     * <p>Returns 200 for any found scan (including PENDING/PROCESSING) so clients can poll;
+     * returns 404 when no scan exists for the given UUID.</p>
+     */
+    @GetMapping("/products/{scanId}")
+    public ResponseEntity<ScanStatusResponse> getScanStatus(@PathVariable("scanId") UUID scanId) {
+        return scanRepository.findById(scanId)
+                .map(scan -> {
+                    if (InventoryScan.ScanStatus.COMPLETED.equals(scan.getStatus()) && scan.getResultData() != null) {
+                        return ResponseEntity.ok(ScanStatusResponse.withResult(
+                                scan.getId(), scan.getStatus().name(), scan.getResultData()));
+                    } else if (InventoryScan.ScanStatus.FAILED.equals(scan.getStatus())) {
+                        return ResponseEntity.ok(ScanStatusResponse.failed(
+                                scan.getId(), scan.getErrorMessage() != null ? scan.getErrorMessage() : "Unknown error"));
+                    } else {
+                        // PENDING, PROCESSING — no result yet
+                        return ResponseEntity.ok(ScanStatusResponse.of(scan.getId(), scan.getStatus().name()));
+                    }
+                })
+                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body(new ScanStatusResponse(scanId, null, "Scan not found", null)));
     }
 
     @PostMapping("/products")
