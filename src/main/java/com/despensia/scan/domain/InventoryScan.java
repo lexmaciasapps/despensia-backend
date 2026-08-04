@@ -35,11 +35,7 @@ public class InventoryScan {
      * Raw JSON blob storing the scan result (PRODUCT or RECEIPT data).
      * Populated after successful processing; NULL for PENDING/PROCESSING/FAILED scans.
      */
-    /**
-     * Raw JSON blob storing the scan result (PRODUCT or RECEIPT data).
-     * Populated after successful processing; NULL for PENDING/PROCESSING/FAILED scans.
-     */
-    @Column(name = "result_data")
+    @Column(name = "result_data", columnDefinition = "jsonb")
     private String resultData;
 
     @OneToMany(mappedBy = "inventoryScan", cascade = CascadeType.ALL, orphanRemoval = true)
