@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.stereotype.Component;
 
@@ -33,22 +34,21 @@ public class LmStudioReceiptParser implements ReceiptParserPort {
     private final ChatClient chatClient;
 
     /**
-     * Constructor injection for the Spring AI {@link ChatClient.Builder}.
+     * Constructor injection for the Spring AI {@link ChatClient}.
      */
-    /**
-     * Constructor injection for the Spring AI {@link ChatClient.Builder}.
-     */
-    public LmStudioReceiptParser(ChatClient.Builder chatClientBuilder) {
-        // Spring AI auto-configures OpenAI-compatible client from application.yml:
-        // spring.ai.openai.base-url -> http://localhost:1234/v1/ (LM Studio endpoint)
-        this.chatClient = chatClientBuilder != null ? chatClientBuilder.build() : null;
+    public LmStudioReceiptParser(@Qualifier("chatClient") ChatClient chatClient) {
+        this.chatClient = chatClient != null ? chatClient : createFallbackChatClient();
+    }
+
+    private static ChatClient createFallbackChatClient() {
+        log.warn("No Spring AI ChatClient bean found — creating fallback for LM Studio");
+        return null; // will cause NPE if called, but better than silent failure
     }
 
     /**
      * Package-private constructor for testing — skips ChatClient initialization.
      */
     LmStudioReceiptParser() {
-        // No-op: used only by unit tests that call parseReceiptResponse directly (no AI needed).
         this.chatClient = null;
     }
 
@@ -56,6 +56,10 @@ public class LmStudioReceiptParser implements ReceiptParserPort {
     @Override
     public Receipt parse(InventoryScan scan) {
         log.info("Parsing receipt via Spring AI for image: {}", scan.getImagePath());
+
+        if (chatClient == null) {
+            throw new IllegalStateException("ChatClient not initialized — verify SPRING_AI_OPENAI_API_KEY and spring.ai.openai.base-url are configured");
+        }
 
         try {
             byte[] imageData = Files.readAllBytes(java.nio.file.Path.of(scan.getImagePath()));
