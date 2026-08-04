@@ -3,6 +3,7 @@ package com.despensia.scan.domain;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,6 +30,13 @@ public class InventoryScan {
 
     @Column(name = "error_message")
     private String errorMessage;
+
+    /**
+     * Raw JSON blob storing the scan result (PRODUCT or RECEIPT data).
+     * Populated after successful processing; NULL for PENDING/PROCESSING/FAILED scans.
+     */
+    @Column(name = "result_data", columnDefinition = "jsonb")
+    private String resultData;
 
     @OneToMany(mappedBy = "inventoryScan", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ReceiptLineItem> lineItems;
@@ -64,6 +72,9 @@ public class InventoryScan {
 
     public String getErrorMessage() { return errorMessage; }
     public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
+
+    public String getResultData() { return resultData; }
+    public void setResultData(String resultData) { this.resultData = resultData; }
 
     public List<ReceiptLineItem> getLineItems() { return lineItems; }
     public void setLineItems(List<ReceiptLineItem> lineItems) { this.lineItems = lineItems; }
