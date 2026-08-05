@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.ai.model.Media;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.stereotype.Component;
@@ -28,7 +29,7 @@ public class LmStudioProductScanner implements ProductScanningPort {
 
     private final ChatClient chatClient;
 
-    public LmStudioProductScanner(ChatClient.Builder chatClientBuilder) {
+    public LmStudioProductScanner(@Qualifier("lmStudioChatClientBuilder") ChatClient.Builder chatClientBuilder) {
         // Spring AI auto-configures OpenAI-compatible client from application.yml:
         // spring.ai.openai.base-url -> http://localhost:1234/v1/ (LM Studio endpoint)
         this.chatClient = chatClientBuilder.build();

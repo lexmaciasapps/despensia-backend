@@ -51,8 +51,18 @@ public class SpringAiConfig {
     /**
      * Wrap ChatModel in a ChatClient for use by LmStudioReceiptParser and other consumers.
      */
-    @Bean("chatClient")
+    @Bean("lmStudioChatClient")
     public ChatClient chatClient(ChatModel chatModel) {
+        log.info("Creating Spring AI ChatClient (LM Studio) at {}", baseUrl);
         return ChatClient.builder(chatModel).build();
+    }
+
+    /**
+     * Provide ChatClient.Builder bean so LmStudioProductScanner can construct its own client.
+     */
+    @Bean("lmStudioChatClientBuilder")
+    public ChatClient.Builder chatClientBuilder(ChatModel chatModel) {
+        log.info("Creating Spring AI ChatClient Builder for LM Studio at {}", baseUrl);
+        return ChatClient.builder(chatModel);
     }
 }

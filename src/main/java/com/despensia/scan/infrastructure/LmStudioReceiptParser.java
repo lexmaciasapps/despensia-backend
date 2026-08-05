@@ -36,7 +36,7 @@ public class LmStudioReceiptParser implements ReceiptParserPort {
     /**
      * Constructor injection for the Spring AI {@link ChatClient}.
      */
-    public LmStudioReceiptParser(@Qualifier("chatClient") ChatClient chatClient) {
+    public LmStudioReceiptParser(@Qualifier("lmStudioChatClient") ChatClient chatClient) {
         this.chatClient = chatClient != null ? chatClient : createFallbackChatClient();
     }
 
